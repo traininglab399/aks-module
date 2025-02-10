@@ -1,0 +1,51 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+# Link the Variable Group containing your secrets
+variables:
+- group: tf # Ensure this matches the name of your Variable Group
+
+steps:
+# Install Terraform
+- task: TerraformInstaller@0
+  inputs:
+    terraformVersion: '1.5.7' # Replace with your desired version
+
+# Log in to Azure using the Service Principal
+- script: |
+    az login --service-principal \
+      --username $(ARM_CLIENT_ID) \
+      --password $(ARM_CLIENT_SECRET) \
+      --tenant $(ARM_TENANT_ID)
+  displayName: 'Azure Login'
+
+# Initialize Terraform
+- script: |
+    cd $(System.DefaultWorkingDirectory)
+    terraform init \
+      -backend-config="resource_group_name=cloud-shell-storage-centralindia" \
+      -backend-config="storage_account_name=csg1003200092705c0f" \
+      -backend-config="container_name=tfstate" \
+      -backend-config="key=terraform.tfstate"
+  displayName: 'Terraform Init'
+
+# Validate Terraform Configuration
+- script: |
+    cd $(System.DefaultWorkingDirectory)
+    terraform validate
+  displayName: 'Terraform Validate'
+
+# Plan Terraform Changes
+- script: |
+    cd $(System.DefaultWorkingDirectory)
+    terraform plan -var-file="terraform.tfvars"
+  displayName: 'Terraform Plan'
+
+# Apply Terraform Changes
+- script: |
+    cd $(System.DefaultWorkingDirectory)
+    terraform apply -var-file="terraform.tfvars" -auto-approve
+  displayName: 'Terraform Apply'
