@@ -1,3 +1,4 @@
+# Outputs
 output "resource_group_name" {
   description = "The name of the resource group."
   value       = module.resource_group.resource_group_name
@@ -10,7 +11,7 @@ output "vnet_name" {
 
 output "subnet_name" {
   description = "The name of the Subnet."
-  value       = module.vnet.subnet_name
+  value       = keys(module.vnet.subnet_ids) # Output all subnet names
 }
 
 output "cluster_name" {
