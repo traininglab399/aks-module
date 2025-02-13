@@ -1,21 +1,24 @@
+# Resource Group Module
 module "resource_group" {
-  source = "./modules/resource-group"
-
+  source              = "./modules/resource-group"
   resource_group_name = var.resource_group_name
   location            = var.location
   tags                = var.tags
 }
+
+# Backend Configuration for Terraform State
 terraform {
   backend "azurerm" {
-    resource_group_name  = "stgaccountname-rg"
-    storage_account_name = "stgaccountname"
+    resource_group_name  = "cloud-shell-storage-centralindia"
+    storage_account_name = "csg1003200092705c0f"
     container_name       = "tfstate"
     key                  = "terraform.tfstate"
   }
 }
-module "vnet" {
-  source = "./modules/vnet"
 
+# Virtual Network Module
+module "vnet" {
+  source                  = "./modules/vnet"
   resource_group_name     = module.resource_group.resource_group_name
   location                = module.resource_group.resource_group_location
   vnet_address_space      = var.vnet_address_space
@@ -23,6 +26,7 @@ module "vnet" {
   tags                    = var.tags
 }
 
+# Log Analytics Workspace
 resource "azurerm_log_analytics_workspace" "logs" {
   name                = "${var.resource_group_name}-logs"
   location            = module.resource_group.resource_group_location
@@ -31,16 +35,16 @@ resource "azurerm_log_analytics_workspace" "logs" {
   tags                = var.tags
 }
 
+# AKS Module
 module "aks" {
-  source = "./modules/aks"
-
+  source                     = "./modules/aks"
   resource_group_name        = module.resource_group.resource_group_name
   resource_group_location    = module.resource_group.resource_group_location
   cluster_name               = var.cluster_name
   dns_prefix                 = var.dns_prefix
   node_count                 = var.node_count
   vm_size                    = var.vm_size
-  subnet_id                  = module.vnet.subnet_id
+  subnet_id                  = module.vnet.subnet_ids["private"] # Use the private subnet ID
   log_analytics_workspace_id = azurerm_log_analytics_workspace.logs.id
   enable_private_cluster     = var.enable_private_cluster
   tags                       = var.tags
