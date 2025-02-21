@@ -46,6 +46,16 @@ variable "enable_private_cluster" {
   default     = false
 }
 
+variable "private_dns_zone_id" {
+  description = "The ID of the Private DNS Zone for the AKS cluster."
+  type        = string
+}
+
+variable "managed_identity_id" {
+  description = "The ID of the User-Assigned Managed Identity for the AKS cluster."
+  type        = string
+}
+
 variable "tags" {
   description = "A map of tags to apply to the resources."
   type        = map(string)
