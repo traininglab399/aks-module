@@ -1,51 +1,56 @@
 # Resource Group Module
-module "resource_group" {
-  source              = "./modules/resource-group"
-  resource_group_name = var.resource_group_name
-  location            = var.location
-  tags                = var.tags
+module "tags" {
+  source = "../../Developer_Experience/terraform-modules/az-tags"
+  tags   = local.tags
 }
 
-# Backend Configuration for Terraform State
-terraform {
-  backend "azurerm" {
-    resource_group_name  = "cloud-shell-storage-centralindia"
-    storage_account_name = "csg1003200092705c0f"
-    container_name       = "tfstate"
-    key                  = "terraform.tfstate"
-  }
-}
-
-# Virtual Network Module
-module "vnet" {
-  source                  = "./modules/vnet"
-  resource_group_name     = module.resource_group.resource_group_name
-  location                = module.resource_group.resource_group_location
-  vnet_address_space      = var.vnet_address_space
-  subnet_address_prefixes = var.subnet_address_prefixes
-  tags                    = var.tags
+module "main_rg" {
+  source            = "../../Developer_Experience/terraform-modules/az-resource-groups"
+  location          = local.location
+  resourcegroupname = local.main_resource_group_name
+  subscription_id   = var.subscription_id
+  tenant_id         = var.tenant_id
+  tags              = module.tags.tags
 }
 
 # Log Analytics Workspace
 resource "azurerm_log_analytics_workspace" "logs" {
-  name                = "${var.resource_group_name}-logs"
-  location            = module.resource_group.resource_group_location
-  resource_group_name = module.resource_group.resource_group_name
+  name                = local.log_analytics_workspace_name
+  location            = local.location
+  resource_group_name = local.vnet_rg
   retention_in_days   = var.log_retention_days
-  tags                = var.tags
+  tags                = module.tags.tags
+}
+
+# Managed Identity for AKS
+module "avm-res-managedidentity-userassignedidentity" {
+  source              = "../../Developer_Experience/terraform-modules/az-managed-identity"
+  name                = "${local.application_name}-mi-${var.environment}"
+  location            = local.location
+  resource_group_name = local.main_resource_group_name
+  tags                = module.tags.tags
+}
+
+# Role Assignments
+resource "azurerm_role_assignment" "role-assignment-dnszone" {
+  scope                = data.azurerm_private_dns_zone.dnszone-aks.id
+  role_definition_name = "Private DNS Zone Contributor"
+  principal_id         = module.avm-res-managedidentity-userassignedidentity.principal_id
 }
 
 # AKS Module
 module "aks" {
   source                     = "./modules/aks"
-  resource_group_name        = module.resource_group.resource_group_name
-  resource_group_location    = module.resource_group.resource_group_location
+  resource_group_name        = local.main_resource_group_name
+  resource_group_location    = local.location
   cluster_name               = var.cluster_name
   dns_prefix                 = var.dns_prefix
   node_count                 = var.node_count
   vm_size                    = var.vm_size
-  subnet_id                  = module.vnet.subnet_ids["private"] # Use the private subnet ID
+  subnet_id                  = data.azurerm_subnet.aks_subnet.id
   log_analytics_workspace_id = azurerm_log_analytics_workspace.logs.id
   enable_private_cluster     = var.enable_private_cluster
-  tags                       = var.tags
+  private_dns_zone_id        = data.azurerm_private_dns_zone.dnszone-aks.id
+  managed_identity_id        = module.avm-res-managedidentity-userassignedidentity.identity_id
+  tags                       = module.tags.tags
 }
