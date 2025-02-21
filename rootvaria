@@ -18,6 +18,11 @@ variable "dns_prefix" {
   type        = string
 }
 
+variable "environment" {
+  type        = string
+  description = "Environment (e.g., dev, prod)."
+}
+
 variable "node_count" {
   description = "The number of nodes in the default node pool."
   type        = number
@@ -34,6 +39,12 @@ variable "vnet_address_space" {
   description = "The address space for the Virtual Network (CIDR block)."
   type        = list(string)
   default     = ["10.0.0.0/16"]
+}
+
+variable "aks_subnet_name" {
+  type        = string
+  default     = "AksSubnet"
+  description = "Subnet name for AKS."
 }
 
 variable "subnet_address_prefixes" {
@@ -63,4 +74,14 @@ variable "tags" {
     Environment = "Dev"
     Project     = "Terraform-AKS"
   }
+}
+
+variable "subscription_id" {
+  description = "Azure Subscription ID."
+  type        = string
+}
+
+variable "tenant_id" {
+  description = "Azure Tenant ID."
+  type        = string
 }
